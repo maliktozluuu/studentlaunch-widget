@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admission Readiness Analysis</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --navy:#16233F;
+    --navy-2:#1F335A;
+    --gold:#C9A227;
+    --paper:#F6F3EC;
+    --sage:#5E7A5B;
+    --coral:#B0503F;
+    --ink:#221D14;
+    --line: rgba(22,35,63,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:transparent; font-family:'Inter',sans-serif; color:var(--ink);}
+  .wrap{max-width:640px; margin:0 auto; padding:32px 20px 48px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--navy-2); display:flex; align-items:center; gap:10px; margin-bottom:10px;
+  }
+  .eyebrow::before{content:""; width:18px;height:1px;background:var(--gold); display:inline-block;}
+  h1{font-family:'Source Serif 4',serif; font-weight:700; font-size:clamp(26px,4vw,34px); line-height:1.15; margin:0 0 8px; color:var(--navy);}
+  .sub{font-size:15px; color:#4b4536; max-width:48ch; line-height:1.5; margin-bottom:28px;}
+
+  form{background:var(--paper); border:1px solid var(--line); border-radius:2px; padding:26px 24px 22px; position:relative;}
+  form::before{content:""; position:absolute; top:0;left:0;right:0;height:3px; background: linear-gradient(90deg, var(--navy), var(--gold) 50%, var(--navy));}
+  .field{margin-bottom:18px;}
+  label{display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--navy-2); margin-bottom:7px;}
+  input, select, textarea{
+    width:100%; padding:11px 12px; border:1px solid var(--line); background:#fff; border-radius:2px;
+    font-family:'Inter',sans-serif; font-size:14.5px; color:var(--ink);
+  }
+  textarea{resize:vertical; min-height:64px;}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--gold); outline-offset:1px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  fieldset{border:none; padding:0; margin:0 0 18px;}
+  legend{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--navy-2); margin-bottom:9px; padding:0;
+  }
+  .checks{display:flex; flex-wrap:wrap; gap:8px;}
+  .chk{
+    display:flex; align-items:center; gap:6px; border:1px solid var(--line); background:#fff;
+    padding:8px 12px; border-radius:2px; font-size:13.5px; cursor:pointer;
+  }
+  .chk input{width:auto;}
+
+  button{
+    width:100%; margin-top:6px; padding:14px; background:var(--navy); color:var(--paper); border:none;
+    border-radius:2px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; letter-spacing:.08em;
+    text-transform:uppercase; cursor:pointer; transition:background .15s ease;
+  }
+  button:hover{background:var(--navy-2);}
+  button:disabled{opacity:.55;cursor:default;}
+
+  .report{
+    display:none; margin-top:22px; background:var(--paper); border:1px solid var(--line);
+    padding:28px 26px; position:relative; animation: rise .4s ease;
+  }
+  @keyframes rise{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+  .report-head{display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:16px;}
+  .report-head h2{font-family:'Source Serif 4',serif; font-size:19px; margin:0; color:var(--navy);}
+  .stamp{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    padding:6px 12px; border:1.5px solid var(--sage); color:var(--sage); border-radius:2px; transform:rotate(-2deg); white-space:nowrap;
+  }
+  .stamp.caution{border-color:var(--coral); color:var(--coral);}
+  .report-body{font-size:14.5px; line-height:1.65; color:#332d1f; white-space:pre-wrap;}
+  .report-body strong{color:var(--navy);}
+
+  .loading{display:none; margin-top:22px; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--navy-2); letter-spacing:.05em;}
+  .loading .dots::after{content:''; animation: dots 1.2s steps(4,end) infinite;}
+  @keyframes dots{0%{content:'';}25%{content:'.';}50%{content:'..';}75%{content:'...';}100%{content:'';}}
+
+  .foot-note{margin-top:18px; font-size:11.5px; color:#8a8368; line-height:1.5;}
+  .error{display:none; margin-top:14px; font-size:13px; color:var(--coral); font-family:'IBM Plex Mono',monospace;}
+  .save-note{display:none; margin-top:10px; font-size:11.5px; color:var(--sage); font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">StudentLaunch AI — Prototype</div>
+  <h1>Before you apply, are you actually ready?</h1>
+  <div class="sub">Fill in your profile and get a personalized Admission Readiness Analysis instantly — your info is also saved so we can follow up.</div>
+
+  <form id="readinessForm">
+    <div class="row2">
+      <div class="field">
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" required>
+      </div>
+      <div class="field">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" required>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="nationality">Home Country / Nationality</label>
+        <input type="text" id="nationality" required>
+      </div>
+      <div class="field">
+        <label for="degree">Current or Most Recent Degree</label>
+        <select id="degree" required>
+          <option value="">Select</option>
+          <option>Bachelor's</option>
+          <option>Master's</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="major">Current Field of Study / Major</label>
+        <input type="text" id="major" required>
+      </div>
+      <div class="field">
+        <label for="gpa">Current or Final GPA</label>
+        <input type="text" id="gpa" placeholder="e.g. 3.4/4.0" required>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="country">Target Country</label>
+        <select id="country" required>
+          <option value="">Select</option>
+          <option>Germany</option>
+          <option>Netherlands</option>
+          <option>Hungary</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="program">Preferred Master's Program</label>
+        <input type="text" id="program" required>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="timeline">When Do You Plan to Apply?</label>
+        <select id="timeline" required>
+          <option value="">Select</option>
+          <option>Within 3 months</option>
+          <option>Within 6 months</option>
+          <option>Within 12 months</option>
+          <option>Just exploring</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="english">English Language Proficiency Score</label>
+        <select id="english" required>
+          <option value="">Select</option>
+          <option>IELTS 7.5+ or equivalent</option>
+          <option>IELTS 6.5 - 7.0 or equivalent</option>
+          <option>Below 6.5</option>
+          <option>Haven't taken a test yet</option>
+        </select>
+      </div>
+    </div>
+
+    <fieldset>
+      <legend>Relevant Background (select all that apply)</legend>
+      <div class="checks">
+        <label class="chk"><input type="checkbox" value="Professional Work Experience"> Professional Work Experience</label>
+        <label class="chk"><input type="checkbox" value="Internships"> Internships</label>
+        <label class="chk"><input type="checkbox" value="Academic Research"> Academic Research</label>
+        <label class="chk"><input type="checkbox" value="None"> None</label>
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label for="challenge">What Is Your Biggest Challenge Right Now?</label>
+      <select id="challenge" required>
+        <option value="">Select</option>
+        <option>Understanding admission requirements</option>
+        <option>Finding scholarships</option>
+        <option>Choosing universities</option>
+        <option>Motivation letter / SOP</option>
+        <option>Application documents</option>
+        <option>Visa preparation</option>
+        <option>Other</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="oneProblem">If StudentLaunch AI Could Solve ONE Problem For You Right Now, What Would It Be? (optional)</label>
+      <textarea id="oneProblem"></textarea>
+    </div>
+
+    <button type="submit" id="submitBtn">Generate My Readiness Analysis</button>
+  </form>
+
+  <div class="loading" id="loading">Evaluating your profile<span class="dots"></span></div>
+  <div class="error" id="error"></div>
+
+  <div class="report" id="report">
+    <div class="report-head">
+      <h2>Admission Readiness Report</h2>
+      <div class="stamp" id="stamp">REVIEWED</div>
+    </div>
+    <div class="report-body" id="reportBody"></div>
+    <div class="save-note" id="saveNote">✓ Your profile has been saved.</div>
+    <div class="foot-note">This analysis is general guidance, not an official admission guarantee. StudentLaunch AI — validation-stage prototype.</div>
+  </div>
+</div>
+
+<script>
+// TODO: paste your Google Apps Script Web App URL here after deploying it.
+const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwAgWQxyJLDSa3UmzsgcoNSYfokASvXrR8SKml0_5k0PURWmMfFYv3kIrGoTbvcpYGr/exec";
+
+const form = document.getElementById('readinessForm');
+const loading = document.getElementById('loading');
+const report = document.getElementById('report');
+const reportBody = document.getElementById('reportBody');
+const errorEl = document.getElementById('error');
+const submitBtn = document.getElementById('submitBtn');
+const stamp = document.getElementById('stamp');
+const saveNote = document.getElementById('saveNote');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  errorEl.style.display = 'none';
+  report.style.display = 'none';
+  saveNote.style.display = 'none';
+  loading.style.display = 'block';
+  submitBtn.disabled = true;
+
+  const data = {
+    fullName: document.getElementById('fullName').value,
+    email: document.getElementById('email').value,
+    nationality: document.getElementById('nationality').value,
+    degree: document.getElementById('degree').value,
+    major: document.getElementById('major').value,
+    gpa: document.getElementById('gpa').value,
+    country: document.getElementById('country').value,
+    program: document.getElementById('program').value,
+    timeline: document.getElementById('timeline').value,
+    english: document.getElementById('english').value,
+    background: Array.from(document.querySelectorAll('.chk input:checked')).map(c => c.value).join(', ') || 'None specified',
+    challenge: document.getElementById('challenge').value,
+    oneProblem: document.getElementById('oneProblem').value,
+    timestamp: new Date().toISOString()
+  };
+
+  const prompt = `You are an expert advisor on European master's degree applications. Based on the student profile below, write a short, clear, and warm "Admission Readiness Analysis". Write in English.
+
+Profile:
+- Nationality: ${data.nationality}
+- Current/most recent degree: ${data.degree} in ${data.major}
+- GPA: ${data.gpa}
+- Target country: ${data.country}
+- Preferred program: ${data.program}
+- Application timeline: ${data.timeline}
+- English proficiency: ${data.english}
+- Relevant background: ${data.background}
+- Biggest stated challenge: ${data.challenge}
+
+The report should include these sections (keep headings short and plain, no markdown headers, plain text only, you may use ** for bold emphasis):
+1) Overall Assessment (1-2 sentences, realistic and honest tone)
+2) Strengths (2-3 bullet points)
+3) Things to Watch (2-3 bullet points)
+4) Recommended Next Step (one concrete action, tailored to their stated biggest challenge)
+
+Keep the total under 180-220 words. Do not overpromise; be realistic and supportive.`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const result = await response.json();
+    const text = result.content.map(b => b.text || "").join("\n").trim();
+    reportBody.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    const lower = text.toLowerCase();
+    if (lower.includes('challenging') || lower.includes('risk') || lower.includes('low') || lower.includes('weak')) {
+      stamp.textContent = 'NEEDS WORK';
+      stamp.classList.add('caution');
+    } else {
+      stamp.textContent = 'REVIEWED';
+      stamp.classList.remove('caution');
+    }
+
+    report.style.display = 'block';
+
+    if (SHEET_WEBHOOK_URL) {
+      try {
+        await fetch(SHEET_WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...data, aiReport: text })
+        });
+        saveNote.style.display = 'block';
+      } catch (saveErr) {
+        // Saving is best-effort; don't block the report if it fails
+      }
+    }
+  } catch (err) {
+    errorEl.textContent = 'Something went wrong, please try again.';
+    errorEl.style.display = 'block';
+  } finally {
+    loading.style.display = 'none';
+    submitBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
