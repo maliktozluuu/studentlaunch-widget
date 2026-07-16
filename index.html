@@ -347,6 +347,12 @@ Keep the total under 180-220 words. Do not overpromise; be realistic and support
     });
 
     const result = await response.json();
+
+    if (!response.ok || !result.content) {
+      console.error("AI response error:", result);
+      throw new Error(result.error?.message || "AI request failed");
+    }
+
     const text = result.content.map(b => b.text || "").join("\n").trim();
     reportBody.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
@@ -360,25 +366,29 @@ Keep the total under 180-220 words. Do not overpromise; be realistic and support
     }
 
     report.style.display = 'block';
-
-    if (SHEET_WEBHOOK_URL) {
-      try {
-        await fetch(SHEET_WEBHOOK_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...data, aiReport: text })
-        });
-        saveNote.style.display = 'block';
-      } catch (saveErr) {}
-    }
   } catch (err) {
-    errorEl.textContent = 'Something went wrong, please try again.';
+    console.error("Readiness analysis error:", err);
+    errorEl.textContent = 'The AI report could not be generated. Your info was still saved — please try again for the analysis.';
     errorEl.style.display = 'block';
-  } finally {
-    loading.style.display = 'none';
-    submitBtn.disabled = false;
   }
+
+  // Save to sheet independently — runs regardless of whether the AI call above succeeded
+  if (SHEET_WEBHOOK_URL) {
+    try {
+      await fetch(SHEET_WEBHOOK_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, aiReport: reportBody.innerText || '' })
+      });
+      saveNote.style.display = 'block';
+    } catch (saveErr) {
+      console.error("Sheet save error:", saveErr);
+    }
+  }
+
+  loading.style.display = 'none';
+  submitBtn.disabled = false;
 });
 </script>
 </body>
