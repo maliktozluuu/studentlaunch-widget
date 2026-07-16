@@ -314,46 +314,28 @@ form.addEventListener('submit', async (e) => {
     timestamp: new Date().toISOString()
   };
 
-  const prompt = `You are an expert advisor on European master's degree applications. Based on the student profile below, write a short, clear, and warm "Admission Readiness Analysis". Write in English.
-
-Profile:
-- Nationality: ${data.nationality}
-- Current/most recent degree: ${data.degree} in ${data.major}
-- GPA: ${data.gpa}
-- Target country: ${data.country}
-- Preferred program: ${data.program}
-- Application timeline: ${data.timeline}
-- English proficiency: ${data.english}
-- Relevant background: ${data.background}
-- Biggest stated challenge: ${data.challenge}
-
-The report should include these sections (keep headings short and plain, no markdown headers, plain text only, you may use ** for bold emphasis):
-1) Overall Assessment (1-2 sentences, realistic and honest tone)
-2) Strengths (2-3 bullet points)
-3) Things to Watch (2-3 bullet points)
-4) Recommended Next Step (one concrete action, tailored to their stated biggest challenge)
-
-Keep the total under 180-220 words. Do not overpromise; be realistic and supportive.`;
+  if (!SHEET_WEBHOOK_URL) {
+    errorEl.textContent = 'Setup incomplete: SHEET_WEBHOOK_URL is not set in the code yet.';
+    errorEl.style.display = 'block';
+    loading.style.display = 'none';
+    submitBtn.disabled = false;
+    return;
+  }
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }]
-      })
+    const response = await fetch(SHEET_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     });
 
     const result = await response.json();
 
-    if (!response.ok || !result.content) {
-      console.error("AI response error:", result);
-      throw new Error(result.error?.message || "AI request failed");
+    if (!result.aiReport) {
+      throw new Error('No report returned');
     }
 
-    const text = result.content.map(b => b.text || "").join("\n").trim();
+    const text = result.aiReport;
     reportBody.innerHTML = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
     const lower = text.toLowerCase();
@@ -366,25 +348,11 @@ Keep the total under 180-220 words. Do not overpromise; be realistic and support
     }
 
     report.style.display = 'block';
+    saveNote.style.display = 'block';
   } catch (err) {
     console.error("Readiness analysis error:", err);
-    errorEl.textContent = 'The AI report could not be generated. Your info was still saved — please try again for the analysis.';
+    errorEl.textContent = 'Something went wrong generating your report. Please try again in a moment.';
     errorEl.style.display = 'block';
-  }
-
-  // Save to sheet independently — runs regardless of whether the AI call above succeeded
-  if (SHEET_WEBHOOK_URL) {
-    try {
-      await fetch(SHEET_WEBHOOK_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, aiReport: reportBody.innerText || '' })
-      });
-      saveNote.style.display = 'block';
-    } catch (saveErr) {
-      console.error("Sheet save error:", saveErr);
-    }
   }
 
   loading.style.display = 'none';
